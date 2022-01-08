@@ -28,6 +28,13 @@ def load_image(image_file):
 
 test_path = 'C:/Users/rkarm/Downloads/Data/Test'
 
+
+target_dir = './ariwells/'
+
+if not os.path.exists(target_dir):
+      os.mkdir(target_dir)
+
+
 #Load the pre-trained models
 model = load_model(model_path)
 model.load_weights(model_weights_path)
@@ -59,7 +66,7 @@ if image_file is not None:
     #st.write(file_details)
     #img = load_image(image_file)
     #st.image(img,height=250,width=250)
-    with open(os.path.join("selected_files",image_file.name),"wb") as f: 
+    with open(os.path.join(target_dir,image_file.name),"wb") as f: 
       f.write(image_file.getbuffer())         
     #st.success("Saved File")
     #st.write(image_file.name)
@@ -70,7 +77,7 @@ if st.sidebar.button('Predict Animal'):
     showpred = 1
     #prediction = Testing.predict((model),"C:/Users/rkarm/Downloads/Data/Train/elephant/" + imageselect)
     #prediction = Testing.predict((model),image_file)
-    prediction = Testing.predict((model),"selected_files/" + image_file.name)
+    prediction = Testing.predict((model),target_dir + image_file.name)
 if showpred == 1:
     if prediction == 0:
         st.write("This is a **cat!**")
