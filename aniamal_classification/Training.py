@@ -21,7 +21,7 @@ def train():
     if DEV:
       epochs = 2
     else:
-      epochs = 10
+      epochs = 4
 
     train_data_path = 'C:/Users/rkarm/Downloads/Data/Train/'
     validation_data_path = 'C:/Users/rkarm/Downloads/Data/Test/'
@@ -38,7 +38,7 @@ def train():
     conv1_size = 5
     conv2_size = 3
     pool_size = 3
-    classes_num = 3
+    classes_num = 4
     lr = 0.002
 
     model = Sequential()

@@ -54,9 +54,10 @@ st.sidebar.title("Predict New Images")
 #imageselect = st.sidebar.selectbox("Pick an image.", onlyfiles)
 
 
-st.title('Animal Identification')
+st.title('Living Organism Identification')
 st.write("Pick an image from the left. You'll be able to view the image.")
 st.write("When you're ready, submit a prediction on the left.")
+st.write("Only detectable for cat, elephant, horse and human being")
 
 st.write("")
 image_file = st.sidebar.file_uploader("Upload Images",type=["png","jpg","jpeg"])
@@ -73,7 +74,7 @@ if image_file is not None:
     
 #image = Image.open("C:/Users/rkarm/Downloads/Data/Train/elephant/" + imageselect)
 #st.image(image, caption="Let's predict the animal!", use_column_width=True)
-if st.sidebar.button('Predict Animal'):
+if st.sidebar.button('Predict a Living Organism'):
     showpred = 1
     #prediction = Testing.predict((model),"C:/Users/rkarm/Downloads/Data/Train/elephant/" + imageselect)
     #prediction = Testing.predict((model),image_file)
@@ -81,7 +82,17 @@ if st.sidebar.button('Predict Animal'):
 if showpred == 1:
     if prediction == 0:
         st.write("This is a **cat!**")
+        image = Image.open("C:/Users/rkarm/Downloads/Data/mycat.jpg")
+        st.image(image,width = 200)
     if prediction == 1:
         st.write("This is an **elephant!**")
+        image = Image.open("C:/Users/rkarm/Downloads/Data/myelephant.png")
+        st.image(image,width = 200)
     if prediction == 2:
         st.write("This is a **horse!**")
+        image = Image.open("C:/Users/rkarm/Downloads/Data/myhorse.jpg")
+        st.image(image,width = 200)
+    if prediction == 3:
+        st.write("This is a **human being**")
+        image = Image.open("C:/Users/rkarm/Downloads/Data/myhuman.jpg")
+        st.image(image,width = 200)
