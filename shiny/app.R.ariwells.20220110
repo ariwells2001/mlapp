@@ -1,0 +1,1575 @@
+
+library(shinydashboard)
+library(shiny)
+#library(DBI)
+library(RMariaDB)
+library(DBI)
+library(boot)
+library(pastecs)
+library(ggplot2)
+library(GGally)
+library(VGAM)
+#library(caret)
+#library(e1071)
+#library(ggplot2)
+#  mydb = dbConnect(MariaDB(), user='iotuser',password='iot12345',dbname='iot',host='142.93.75.207')
+#  temphumlightdata = dbGetQuery(mydb, "select * from temphumlightTable order by id desc limit 5000")
+#  summarydata = dbGetQuery(mydb, "select temperature, humidity, light from temphumlightTable order by id desc limit 5000")
+#  dbDisconnect(mydb)
+
+skin <- Sys.getenv("DASHBOARD_SKIN")
+skin <- tolower(skin)
+if (skin == "")
+  skin <- "blue"
+
+
+sidebar <- dashboardSidebar(
+  sidebarMenu(
+#    menuItem("Dashboard", tabName = "bolt", icon = icon("dashboard")),
+#    menuItem("Database Selection", icon = icon("th"), tabName = "mysql"),
+#   menuItem("Database Tables", icon = icon("th"), tabName = "mydb"),
+#    menuItem("Machine Learnings", icon = icon("bolt"), tabName = "machinelearnings",badgeColor = "green"),
+#    menuItem("File Upload",icon = icon("bolt"),tabName = "fupload"),
+#    menuItem("Machine Learnings", icon = icon("bolt"), tabName = "machinelearnings",badgeColor = "green"),
+#    menuItem("Data Tables", icon = icon("th"), tabName = "tables",badgeColor = "green"),
+#    menuItem("Machine Learnings", icon = icon("bolt"), tabName = "machinelearnings",badgeColor = "green"),
+#    menuItem("Linear Regression Analysis", icon = icon("bolt"),tabName = "regression"),
+#    menuItem("Statiscal Learnings", icon = icon("bolt"),
+#        menuSubItem("Linear Regression", tabName = "linearRegression"),
+#       menuSubItem("LOESS Regression", tabName = "LoessRegression"),
+#       menuSubItem("Linear SVM",tabName = "linearSVM"),
+#        menuSubItem("K-means Clustering", tabName = "kMeans")),
+#    menuItem("WPI/SuperMicro Gateway Demo", tabName = "live",icon = icon("bolt")),
+#    menuItem("Streaming Data Charts", icon = icon("bolt"),tabName = "streaming-charts"),
+#     menuItem("Plot.ly IoT Data Streaming", icon = icon("bolt"),tabName = "plotly"),
+#        menuItem("WPI/SuperMicro Gateway Demo", tabName = "live",icon = icon("bolt")),
+        menuItem("Node-Red Dashboard",icon = icon("bolt"),tabName = "dashboard1"),
+    	menuItem("Grafana", icon = icon("bolt"),tabName = "grafana"),
+        menuItem("Node-Red", icon = icon("bolt"),tabName = "nodered"),
+	menuItem("Homebridge", icon = icon("bolt"),tabName = "homebridge"),
+	menuItem("Homeassistant", icon = icon("bolt"),tabName = "homeassistant"),
+	menuItem("Database Tables", icon = icon("th"), tabName = "mydb"),
+	menuItem("File Upload",icon = icon("bolt"),tabName = "fupload"),
+	menuItem("Machine Learnings", icon = icon("bolt"), tabName = "machinelearnings",badgeColor = "green"),
+	menuItem("Streamlit", icon = icon("bolt"),tabName = "streamlit")
+#    menuItem("aRi Analytics Pte Ltd", tabName ="homepage", icon=icon("home")),
+#    menuItem("Administrator",icon=icon("lock"),
+#    menuSubItem("Confidentials", tabName = "admin"),
+#    menuSubItem("Add Users", tabName = "users")),
+#    menuItem("Logout",icon=icon("user"),href = "http://192.168.219.114/iot/pages/logout.php" )
+#     menuItem("RStudio Server",icon=icon("bolt"),href = "http://112.157.171.74:8787")    
+  )
+)
+
+body <- dashboardBody(
+  tabItems(
+    tabItem("dashboard",
+      fluidRow(
+        box(
+          title = "Temperature Histogram (Density)", background = "red",
+          status = "primary",
+          plotOutput("plot1", height = 290),
+          width=5,height = 350
+        ),
+         box(
+          title = "Thermometer Live",
+          width = 2, height = 350, background="yellow",
+          htmlOutput("thermo")
+          ),
+
+        tabBox(
+          width=5,height = 350,
+          tabPanel("Humidity Histogram (Density)", background = "green",
+            plotOutput("histogram1", height = 290)
+          ),
+          tabPanel("Brightness Histogram (Density)", background = "red",
+            plotOutput("histogram2", height = 290)
+          )
+        )
+      ),
+
+      # Boxes with solid headers
+      fluidRow(
+      
+        box(
+          title = "Temperature/Humidity/Brightness Live",
+          width = 6, height = 200, background="black",
+          htmlOutput("inc1")
+          ),
+          box(
+          title = "Histogram control", width = 6, height= 200,background="black", solidHeader = TRUE, status = "primary",
+          sliderInput("count", "Count", min = 100, max = 5000, value = 150)
+        )
+
+
+        
+      ),
+      
+      # Solid backgrounds
+      fluidRow(
+  	box(
+          title = "Summary Plot [Temperature-Humidity-Brightness(Light)]", background = "red",
+          status = "primary",
+          plotOutput("summaryplot", height = 490),
+          height = 550,width =7
+        ),
+	box(
+          title = "Plotly Refresh",
+          width = 5, height = 550, background="red",
+          htmlOutput("plotlyr")
+          )
+      ),
+
+      fluidRow(
+
+     box(
+        title = "Max-T",
+        verbatimTextOutput("maximum_temp"),
+        width = 2,height= 100,background = "red"
+        ),
+        box(
+        title = "Min-T",
+        verbatimTextOutput("minimum_temp"),
+        width = 2, height=100, background = "red"
+        ),
+         box(
+        title = "Max-H",
+        verbatimTextOutput("maximum_hum"),
+        width = 2, height=100,background = "blue"
+        ),
+        box(
+        title = "Min-H",
+        verbatimTextOutput("minimum_hum"),
+        width = 2, height=100,background = "blue"
+        ),
+         box(
+        title = "Max-B",
+        verbatimTextOutput("maximum_light"),
+        width = 2, height=100, background = "yellow"
+        ),
+        box(
+        title = "Min-B",
+        verbatimTextOutput("minimum_light"),
+        width = 2, height=100,background = "yellow"
+        ) 
+
+
+      )
+    ),
+
+########################################Database Tables#################################
+tabItem("mydb",
+ fluidRow(
+
+     box(
+     
+        selectInput("dt_server_ip","Server IP", choices = c("142.93.75.207")),
+        width = 2,height= 80,background = "red"
+        ),
+        box(
+        selectInput("dt_user_id","User ID", choices = c("iotuser")),
+        width = 2, height=80, background = "red"
+        ),
+         box(
+         passwordInput("dt_password","Password:",value="iot12345"),
+        width = 2, height=80,background = "red"
+        ),
+
+     box(
+        selectInput("dt_db_name","Database Name", choices = c("iot")),
+        width = 2,height= 80,background = "red"
+        ),
+        box(
+        uiOutput("tablenamedt"),
+        width = 2, height=80, background = "red"
+        ),
+         box(
+        numericInput("rownumberoftable", "Number of Rows:", 20),
+        width = 2, height=80,background = "red"
+        )
+       ),
+     fluidRow(
+        box(
+
+       title = "Table Information", background = "black",
+          status = "primary",
+          tableOutput("generaltable"),
+          height = 700,width=6
+     
+          ),
+       box(
+          title = "Summary Plot for Selected Table", background = "black",
+          status = "primary",
+          plotOutput("tablesummaryplot", height = 600),
+          height = 700,width =6
+        )
+
+)
+  
+      
+    ),
+
+
+#########################################################################################
+###################################################################
+########### Machine Learnig UIs ###################################
+##################################################################
+
+########### Linear Regression UI ################################
+tabItem("linearRegression",
+       fluidRow(
+        box(
+        title = "Predictor", background = "yellow",width=6,
+        selectInput("linearx", "Choose the dataset for a predictor:",
+                  choices = c( "temperature", "humidity","light"))
+        ),
+        box(
+        title = "Target", background = "yellow",width=6,
+        selectInput("lineary", "Choose the  dataset for a target:",
+                  choices = c( "humidity", "temperature","light"))
+        )
+        ),
+
+       fluidRow(
+        box(
+
+       title = "Linear Regression Graph", background = "black",
+          status = "primary",
+          plotOutput("linearRegressionPlot", height = 500),
+          height = 600,width=12
+     )
+ )
+),
+
+################################################################
+########### LOESS Regression UI ################################
+tabItem("LoessRegression",
+       fluidRow(
+        box(
+        title = "Predictor", background = "yellow",width=6,
+        selectInput("polyx", "Choose the dataset for a predictor:",
+                  choices = c( "temperature","humidity"))
+        ),
+        box(
+        title = "Target", background = "yellow",width=6,
+        selectInput("polyy", "Choose the  dataset for a target:",
+                  choices = c( "humidity","temperature"))
+        )
+        ),
+
+       fluidRow(
+        box(
+
+       title = "LOESS Regression Graph", background = "black",
+          status = "primary",
+          plotOutput("LoessRegressionPlot", height = 700),
+          height = 800,width=12
+     )
+ )
+),
+
+################################################################
+
+########## Linear SVM (Support Vector Machine) UI ####################
+tabItem("linearSVM",
+       fluidRow(
+        box(
+        title = "Predictor", background = "yellow",width=6,
+        selectInput("svmx", "Choose the dataset for a predictor:",
+                  choices = c( "temperature", "humidity","light"))
+        ),
+        box(
+        title = "Target", background = "yellow",width=6,
+        selectInput("svmy", "Choose the  dataset for a target:",
+                  choices = c( "humidity", "temperature","light"))
+        )
+        ),
+
+       fluidRow(
+        box(
+
+       title = "Linear Support Vector Machine Graph", background = "black",
+          status = "primary",
+          plotOutput("linearSVMPlot", height = 700),
+          height = 800,width=12
+     )
+)
+),
+
+######################################################################
+
+########### K-Means Clustering UI ################################
+tabItem("kMeans",
+       fluidRow(
+        box(
+        title = "X-Variable", background = "yellow",width=5,
+        selectInput("xcol", "Choose the dataset for X:",
+                  choices = c( "humidity", "temperature","light"))
+        ),
+        box(
+        title = "Y-Variable", background = "yellow",width=5,
+        selectInput("ycol", "Choose the  dataset for Y:",
+                  choices = c( "temperature", "humidity","light"))
+        ),
+
+
+        box(
+        title = "Clusters",background = "yellow",width=2,
+        numericInput("clusters", "The Count of Clusters:", 3)
+        )
+      ),
+fluidRow(
+        box(
+
+       title = "K-Means Clustering Graph", background = "red",
+          status = "primary",
+          plotOutput("kMeansPlot", height = 500),
+          height = 600,width=12
+     )
+ )
+),
+##############################################################################
+
+######################### MySQL Database ####################################
+tabItem("mysql",
+         fluidRow(
+        box(
+        
+        title = "MySQL Server Information", background = "black",width=4,
+        selectInput("server_ip","Server IP", choices = c("142.93.75.207")),
+        selectInput("user_id","User ID", choices = c("iotuser")),
+        passwordInput("password","Password:",value="iot12345")
+        ),
+        box(
+        title = "Database Information", background = "red",width=4,
+        selectInput("db_name","Database Name", choices = c("iot")),
+        selectInput("table_name","Data Table Name", choices = c("temphumlightTable","temphumTable"))
+        ),
+        box(
+        title = "Predictors and Targets", background = "red",width=4,
+        selectInput("x_variable","X-Predictor", choices = c("temperature","humidity","light")),
+        selectInput("y_variable","Y-Target", choices = c("humidity","temperature","light")),
+        selectInput("kindofgraph","Sort of Graph",choices = c("histogram","regression"))
+
+        )
+
+
+        ),
+
+
+       fluidRow(
+        box(
+
+       title = "IoT Data Graph", background = "green",
+          status = "primary",
+          plotOutput("mysqlregression", height = 400),
+          height = 500,width=12
+     )
+)
+
+  ),
+
+
+############################################################################
+
+######################################################## Machine Learnings ########################################################################################
+tabItem("machinelearnings",
+         fluidRow(
+        box(
+
+        title = "MySQL Server Information", background = "black",width=4,
+        selectInput("ml_server_ip","Server IP", choices = c("142.93.75.207")),
+        selectInput("ml_user_id","User ID", choices = c("iotuser")),
+        passwordInput("ml_password","Password:",value="iot12345")
+        ),
+        box(
+        title = "Database Information", background = "red",width=4,
+        selectInput("ml_db_name","Database Name", choices = c("iot")),
+        #selectInput("ml_table_name","Data Table Name", choices = c("irisTable","gradeTable","longleyTable","mtcarsTable","airpassengersTable", "temphumlightTable","temphumTable")),
+	uiOutput("tablenameml"),
+        selectInput("ml_kindofgraph","Chosen ML Algorithm",choices = c("LinearRegression","KMeansClustering","LogisticRegression"))
+        ),
+        box(
+        title = "Predictors and Targets", background = "red",width=4,
+        #selectInput("ml_x_variable","X-Predictor", choices = c("temperature","humidity","light")),
+        #selectInput("ml_y_variable","Y-Target", choices = c("humidity","temperature","light")),
+        #selectInput("ml_kindofgraph","Chosen ML Algorithm",choices = c("LinearRegression","KMeansClustering")),
+        uiOutput("xlabels"),
+	uiOutput("ylabels"),
+        uiOutput("numberofclusters")
+
+        )
+
+
+        ),
+
+   fluidRow(
+        box(
+
+       title = "Graph for Machine Learnings", background = "green",
+          status = "primary",
+          plotOutput("mlgraph", height = 600),
+          height = 700,width=8
+     ), 
+
+       box(
+	title = "Summary for Machine Learnings", background = "black",
+	verbatimTextOutput("summaryofmachinelearnings"),
+        height = 700,width=4
+
+)
+)
+
+  ),
+
+
+
+
+
+##########################################################################
+######################### File Upload ####################################
+tabItem("fupload",
+
+
+         fluidRow(
+	box(
+       background = "green",
+       fileInput('file1', 'Choose a csv or tsv file to upload',
+                accept = c(
+                  'text/csv',
+                  'text/comma-separated-values',
+                  'text/tab-separated-values',
+                  'text/plain',
+                  '.csv',
+                  '.tsv'
+                )
+              ),
+      checkboxInput('header', 'Header', TRUE)
+      ),
+
+      box(
+      background = "green", width = 3,
+        radioButtons('sep', 'Separator',
+                   c(Comma=',',
+                     Semicolon=';',
+                     Tab='\t'),
+                   ',')
+       ),
+      box (
+      background = "green", width = 3,
+      radioButtons('quote', 'Quote',
+                   c(None='',
+                     'Double Quote'='"',
+                     'Single Quote'="'"),
+                   '"')
+       )
+       ),
+
+       fluidRow(
+
+        box(
+        title = "Uploaded Data Table", background = "yellow", width = 4,
+          numericInput("nrs", "No. of Rows:", 10),
+          tableOutput("fuploadtable")
+     ),
+
+     	box(
+        title = "Uploaded Data Histogram", background = "yellow", width = 8,      
+        uiOutput("columns"),
+        plotOutput("uploadplot")
+    	),
+
+#####additional features
+box(
+        title = "Summary Plot", background = "yellow", width = 12,
+       # uiOutput("columns"),
+        plotOutput("uploadsummaryplot")
+        )
+
+
+
+
+
+      
+
+
+)
+
+  ),
+
+###############################################################################################
+
+####################### Live Display ###########################################################
+tabItem("live",
+	fluidRow(
+	box(
+		title= "Live Display", background = "blue", 
+		width=12,htmlOutput("inc")
+           )
+           )
+  ),
+
+##################################################################################################
+
+######################## Plotly Demo #############################################################
+tabItem("plotly",
+         fluidRow(
+         box(
+		title = "Plot.ly IoT Data Streaming Demonstration", background = "blue",
+		width=12,height=700,htmlOutput("incplotly")
+	    )
+	    )
+  ),
+###################################################################################################
+
+
+######################## Google Live Charts #######################################################
+tabItem("live-charts",
+        fluidRow(
+        box(
+                title= "Live Chart for Temperature/Humidity", background = "red",
+                width=12,height=1000,htmlOutput("inc4")
+           )
+           )
+  ),
+###################################################################################################
+
+######################## RGraph Streaming Charts #######################################################
+tabItem("streaming-charts",
+        fluidRow(
+        box(
+                title= "Live Chart for Temperature", background = "blue",
+                width=12,height=500,htmlOutput("stream1")
+           ),
+         box(
+                title= "Live Chart for Humidity", background = "yellow",
+                width=12,height=500,htmlOutput("stream2")
+           ),
+           box(
+                title= "Live Chart for Brightness", background = "green",
+                width=12,height=500,htmlOutput("stream3")
+           )
+           )
+  ),
+###################################################################################################
+
+
+############################### Calling Outside Website ##########################################
+tabItem("homepage",
+	fluidRow(
+	box(
+		background = "red",
+		width=12, htmlOutput("inc2")
+	   )
+	   )
+),
+##################################################################################################
+
+
+############################### Calling RStudio Server ##########################################
+
+
+##################################################################################################
+
+
+############################### Calling NODE-RED ##########################################
+tabItem("nodered",
+        fluidRow(
+        box(
+                background = "red",
+                width=12, htmlOutput("nodered")
+           )
+           )
+),
+##################################################################################################
+
+tabItem("dashboard1",
+        fluidRow(
+        box(
+                background = "red",
+                width=12, htmlOutput("dashboard1")
+           )
+           )
+),
+############################### Calling Add-Users ##########################################
+tabItem("users",
+        fluidRow(
+        box(
+                background = "red",
+                width=12, htmlOutput("users")
+           )
+           )
+),
+##################################################################################################
+tabItem("homeassistant",
+        fluidRow(
+        box(
+                background = "red",
+                width=12, htmlOutput("homeassistant")
+           )
+           )
+),
+
+
+
+
+############################### Calling R-Studio ##########################################
+tabItem("grafana",
+        fluidRow(
+        box(
+                background = "red",
+                width=12, htmlOutput("grafana")
+           )
+           )
+),
+##################################################################################################
+
+############################### Calling R-Studio ##########################################
+tabItem("homebridge",
+        fluidRow(
+        box(
+                background = "red",
+                width=12, htmlOutput("homebridge")
+           )
+           )
+),
+##################################################################################################
+
+############################### Calling R-Studio ##########################################
+tabItem("streamlit",
+        fluidRow(
+        box(
+                background = "blue",
+                width=12, htmlOutput("streamlit")
+           )
+           )
+),
+##################################################################################################
+
+
+
+
+
+############################# Calling a seperate Shiny files #####################################
+tabItem("admin",
+        fluidRow(
+        box(
+                background = "red",
+                width=12, htmlOutput("inc3")
+           )
+           )
+),
+####################################################################################################
+
+################################## Table Rendering ################################################	
+tabItem("tables",
+      fluidRow(
+        box(
+        title = "Dataset", background = "yellow",
+        selectInput("dataset", "Choose a dataset:",
+                  choices = c( "humidity", "temperature","light"))
+        ),
+        box(
+        title = "Number of Dataset",background = "red",
+        numericInput("obs", "Number of observations to view:", 10)
+        )
+      ),
+      fluidRow(  
+        box(
+        title = "Statistical IoT Data Summary", background = "blue",
+         verbatimTextOutput("info_thl"),
+        width =12)
+       ),
+       fluidRow(
+        box(
+        title = "Raw IoT Data (Temperature/Humidity/Brightness)", background = "black",
+        tableOutput("viewR"),
+        width =12
+       )
+      )
+
+      ),
+#####################################################################################################
+
+############################ Showing Linear Regressiteon ##############################################
+ tabItem("regression",
+      fluidRow(
+        box(
+          title = "Statistical Temperature Summary", background = "red",
+          verbatimTextOutput("summary_temp"),
+        width =6
+           ),
+           box(
+          title = "Statistical Humidity Summary", background = "blue",
+          verbatimTextOutput("summary_hum"),
+        width =6
+           )
+
+        ),
+
+
+    fluidRow(
+        box(
+          title = "Regression Analysis - Temperature based on Humidity", background = "yellow",
+          plotOutput("plot3"),
+        width =12 
+           )
+	  ),
+
+        fluidRow(
+	box(
+          title = "Regression Analysis - Humidity based on Temperature",background = "red",
+          plotOutput("plot4"),
+        width =12 
+           )
+
+        )
+    
+
+ )
+
+######################################################################################################
+ 
+     
+  )
+)
+
+
+
+header <- dashboardHeader(
+  title = "aRi Wells AIoT Web Visualization Panel" ,
+  titleWidth = 500
+ 
+)
+
+ui <- dashboardPage(header, sidebar, body, skin = "purple")
+
+server <- function(input, output) {
+  #addtional feature
+  mydb = dbConnect(MariaDB(), user='iotuser',password='iot12345',dbname='iot',host='142.93.75.207')
+  temphumlightdata = dbGetQuery(mydb, "select * from temphumlightTable order by id desc limit 5000")
+  summarydata = dbGetQuery(mydb, "select temperature, humidity, light from temphumlightTable order by id desc limit 5000")
+  dbDisconnect(mydb)
+
+  getPage <-function(){
+return(tags$iframe(src = "http://192.168.219.114/arianalytics/thl_gauges.php"
+                       , style="width:100%;",  frameborder="0"
+                       ,id="iframe"
+                       , height = "500px"))
+  }
+  output$inc <- renderUI({
+	getPage()
+  })
+ getPage1 <- function(){
+ return(tags$iframe(src = "http://192.168.219.114/web/json/livethl.php"
+ 			, style="width:100%;", frameborder = "0"
+			, id = "iframe"
+			, height = "1000px"))
+ }
+ output$inc1 <- renderUI({
+	getPage1()
+})
+
+ getPagethermo <- function(){
+ return(tags$iframe(src = "http://192.168.219.114/arianalytics/RGraph/demos/rgraph-ajax-temp.php"
+                        , style="width:100%;", frameborder = "0"
+                        , id = "iframe"
+                        , height = "1000px"))
+ }
+ output$thermo <- renderUI({
+        getPagethermo()
+})
+
+getPageplotlyr <- function(){
+ return(tags$iframe(src = "http://192.168.219.114/plotly/plotly.php"
+                        , style="width:100%;", frameborder = "0"
+                        , id = "iframe"
+                        , height = "500px"))
+ }
+ output$plotlyr <- renderUI({
+        getPageplotlyr()
+})
+
+ getPagehum <- function(){
+ return(tags$iframe(src = "http://192.168.219.114/arianalytics/RGraph/demos/rgraph-ajax-hum.php"
+                        , style="width:100%;", frameborder = "0"
+                        , id = "iframe"
+                        , height = "1000px"))
+ }
+ output$humidifier <- renderUI({
+        getPagehum()
+})
+
+getPage2 <- function(){
+return(tags$iframe(src= "http://www.ari-analytics.com"
+		 	, style="width:100%;", frameboarder = "0"
+			, id = "iframe"
+			, height = "1000px"))
+}
+ output$inc2 <- renderUI({
+	getPage2()
+})
+
+getPagegf <- function(){
+return(tags$iframe(src= "http://112.157.171.74:23000"
+                        , style="width:100%;", frameboarder = "0"
+                        , id = "iframe"
+                        , height = "1000px"))
+}
+ output$grafana <- renderUI({
+        getPagegf()
+})
+
+getPagenr <- function(){
+return(tags$iframe(src= "http://112.157.171.74:21880"
+                        , style="width:100%;", frameboarder = "0"
+                        , id = "iframe"
+                        , height = "1000px"))
+}
+ output$nodered <- renderUI({
+        getPagenr()
+})
+
+getPagedash <- function(){
+return(tags$iframe(src= "http://112.157.171.74:21880/ui/#!/0?socketid=AF4QytXaRWBtj1iWAAAA"
+                        , style="width:100%;", frameboarder = "0"
+                        , id = "iframe"
+                        , height = "1000px"))
+}
+ output$dashboard1 <- renderUI({
+        getPagedash()
+})
+
+
+
+getPageau <- function(){
+return(tags$iframe(src= "http://192.168.219.114/iot/pages/add.php"
+                        , style="width:100%;", frameboarder = "0"
+                        , id = "iframe"
+                        , height = "1000px"))
+}
+ output$users <- renderUI({
+        getPageau()
+})
+
+
+
+getPagehb <- function(){
+return(tags$iframe(src= "http://112.157.171.74:28581"
+                        , style="width:100%;", frameboarder = "0"
+                        , id = "iframe"
+                        , height = "1000px"))
+}
+ output$homebridge <- renderUI({
+        getPagehb()
+})
+
+getPageha <- function(){
+return(tags$iframe(src= "http://112.157.171.74:28123"
+                        , style="width:100%;", frameboarder = "0"
+                        , id = "iframe"
+                        , height = "1000px"))
+}
+ output$homeassistant <- renderUI({
+        getPageha()
+})
+
+
+
+
+
+
+getPagesr <- function(){
+return(tags$iframe(src= "http://112.157.171.74:8501"
+                        , style="width:100%;", frameboarder = "0"
+                        , id = "iframe"
+                        , height = "1000px"))
+}
+ output$streamlit <- renderUI({
+        getPagesr()
+})
+
+getPage3 <- function(){
+return(tags$iframe(src= "http://192.168.219.114:8000/password"
+                        , style="width:100%;", frameboarder = "0"
+                        , id = "iframe"
+                        , height = "1000px"))
+}
+ output$inc3 <- renderUI({
+        getPage3()
+})
+
+getPagestream1 <- function(){
+return(tags$iframe(src= "http://192.168.219.114/arianalytics/RGraph/demos/rgraph-ajax-temp-line.php"
+                        , style="width:100%;", frameboarder = "0"
+                        , id = "iframe"
+                        , height = "400px"))
+}
+ output$stream1 <- renderUI({
+        getPagestream1()
+})
+
+getPagestream2 <- function(){
+return(tags$iframe(src= "http://192.168.219.114/arianalytics/RGraph/demos/rgraph-ajax-hum-line.php"
+                        , style="width:100%;", frameboarder = "0"
+                        , id = "iframe"
+                        , height = "400px"))
+}
+ output$stream2 <- renderUI({
+        getPagestream2()
+})
+
+getPagestream3 <- function(){
+return(tags$iframe(src= "http://192.168.219.114/arianalytics/RGraph/demos/rgraph-ajax-light-line.php"
+                        , style="width:100%;", frameboarder = "0"
+                        , id = "iframe"
+                        , height = "400px"))
+}
+ output$stream3 <- renderUI({
+        getPagestream3()
+})
+
+getPage4 <- function(){
+return(tags$iframe(src= "http://192.168.219.114/web/json/mp.php"
+                        , style="width:100%;", frameboarder = "0"
+                        , id = "iframe"
+                        , height = "500px"))
+}
+ output$inc4 <- renderUI({
+        getPage4()
+})
+
+
+getPage5 <- function(){
+return(tags$iframe(src= "https://plot.ly/~arianalytics/216/ari-analytics-iot-streaming-data-temperature-and-humidity.embed"
+                        , style="width:100%;", frameboarder = "0"
+                        , id = "iframe"
+                        , height = "500px"))
+}
+ output$incplotly <- renderUI({
+        getPage5()
+})
+
+
+  set.seed(122)
+  histdata <- temphumlightdata$temperature
+  histhumidity <- temphumlightdata$humidity
+  histlight <- temphumlightdata$light
+
+  #Temperature <- temphumlightdata$temperature
+  #Humidity <- temphumlightdata$humidity
+  #Brightness <- temphumlightdata$light
+
+  output$plot1 <- renderPlot({
+
+    data <- histdata[seq(1,input$count) ]
+    hist(data,main="Temperature Distribution", density=20,breaks=20,prob=TRUE,col="red",xlab="Temperature", ylab="Density")
+    lines(density(temphumlightdata$temperature),col ="blue")
+ 
+ })
+
+  output$histogram1 <- renderPlot({
+    datah <- histhumidity[seq(1,input$count) ]
+    hist(datah,main="Humidity Distribution", density=20,breaks=20,prob=TRUE,col="blue",xlab="Humidity", ylab="Density")
+    lines(density(temphumlightdata$humidity),col ="red")
+#     qplot(Temperature,Brightness, geom="boxplot")
+  })
+
+  output$histogram2 <- renderPlot({
+    datal <- histlight[seq(1,input$count) ]
+    hist(datal,main="Brightness Distribution", density=20,breaks=20,prob=TRUE,col="yellow",xlab="Brightness(Light)", ylab="Density")
+    lines(density(temphumlightdata$light),col ="green")
+
+  })
+
+ # output$scatter2 <- renderPlot({
+ #   spread <- as.numeric(input$spread) / 100
+ #   x <- temphumlightdata$timestamp
+ #   y <- temphumlightdata$humidity
+ #   plot(x, y, pch = ".", col = "red", xlab="Time Flow", ylab="Humidity")
+ # })
+
+
+
+ output$summaryplot <- renderPlot({
+ # plot(summarydata,bg=c("red","green"))
+   pairs(data.frame(summarydata),main="Temperature-Humidity-Brightness Data",pch=21,bg=c("red","green","blue"))
+})
+
+output$info <- renderPrint({
+    nearPoints(temphumlightdata,input$plot_click, xvar="timestamp",yvar="temperature")
+    stat.desc(temphumlightdata$temperature)
+})
+
+output$info_temp <- renderPrint({
+    nearPoints(temphumlightdata,input$plot_click, xvar="timestamp",yvar="temperature")
+    stat.desc(temphumlightdata$temperature)
+})
+
+output$info_hum <- renderPrint({
+    nearPoints(temphumlightdata,input$plot_click, xvar="timestamp",yvar="humidity")
+    stat.desc(temphumlightdata$humidity)
+})
+
+output$summary <- renderPrint({
+        summary(temphumlightdata$temperature)
+  })
+
+output$summary_temp <- renderPrint({
+        summary(temphumlightdata$temperature)
+  })
+
+output$summary_hum <- renderPrint({
+        summary(temphumlightdata$humidity)
+  })
+
+ datasetInput <- reactive({
+    switch(input$dataset,
+           "light" = temphumlightdata$light,
+           "temperature" = temphumlightdata$temperature,
+           "humidity" = temphumlightdata$humidity)
+  })
+output$summaryR <- renderPrint({
+    dataset <- datasetInput()
+    summary(dataset)
+})
+
+output$info_thl <- renderPrint({
+   dataset <- datasetInput()
+   stat.desc(dataset)
+})
+
+############# IoT Data Table #####################
+output$viewR <- renderTable({
+    tail(temphumlightdata, n = input$obs)
+})
+###################################################
+
+############# Uploaded File Table #################
+output$fuploadtable <- renderTable({
+ inFile <- input$file1
+ if (is.null(inFile))
+	return (NULL)
+ 
+ uploaddf = read.csv(inFile$datapath, header = input$header,sep = input$sep,quote = input$quote)
+ head(uploaddf, n = input$nrs)
+})
+
+output$columns = renderUI({
+      inFile <- input$file1
+
+ if (is.null(inFile))
+        return (NULL)
+
+ uploaddf = read.csv(inFile$datapath, header = input$header,sep = input$sep,quote = input$quote)
+ uploaddf1 <- uploaddf[1:(length(uploaddf)-1)] 
+ 
+    selectInput('columns2', 'Columns', names(uploaddf1))
+    })
+
+
+columnInput <- reactive({
+
+    inFile <- input$file1
+
+ if (is.null(inFile))
+        return (NULL)
+
+ uploaddf = read.csv(inFile$datapath, header = input$header,sep = input$sep,quote = input$quote)
+ uploaddf1 <- uploaddf[,c(input$columns2)]
+})
+
+
+columnInput2 <- reactive({
+
+    inFile <- input$file1
+
+ if (is.null(inFile))
+        return (NULL)
+
+ uploaddf = read.csv(inFile$datapath, header = input$header,sep = input$sep,quote = input$quote)
+ #uploaddf1 <- uploaddf[,c(input$columns2)]
+})
+
+output$uploadplot <- renderPlot({
+
+      if (is.null(input$columns2))
+        return (NULL)
+     
+     
+     tem_v <- columnInput()
+     up_var <- data.matrix(tem_v)
+     hist(up_var,main= "Histogram for Uploaded Data", xlab=input$columns2,col="blue")
+     #   dfdata=uploaddf[,-1]
+#	ggpairs(data.frame(uploaddf),main="Database Table Summary Plot",pch=21,bg=c("red","green","blue"))
+
+    })
+	
+output$uploadsummaryplot <- renderPlot({
+if (is.null(input$columns2))
+        return (NULL)
+temp <- columnInput2()
+     
+ #if (is.null(inFile))
+  #      return (NULL)
+
+ #uploaddf = read.csv(inFile$datapath, header = input$header,sep = input$sep,quote = input$quote)
+
+
+ #    tem_v <- columnInput()
+  #   up_var <- data.matrix(tem_v)
+   #  hist(up_var,main= "Histogram for Uploaded Data", xlab=input$columns2,col="blue")
+  #      dfdata=uploaddf[,-1]
+       ggpairs(data.frame(temp),main="Summary Plot",pch=21,bg=c("red","green","blue"))
+
+    })
+
+#######################################################################################################################################################
+
+###############################Database Tables############################################################
+output$tablenamedt = renderUI({
+
+  dt_server_ip = input$dt_server_ip
+  dt_user_id = input$dt_user_id
+  dt_password = input$dt_password
+  dt_db_name = input$dt_db_name
+  db_command = "show tables"
+  mynewdb = dbConnect(MariaDB(), user=dt_user_id ,password=dt_password, dbname=dt_db_name,host=dt_server_ip)
+  tbname = dbGetQuery(mynewdb, db_command )
+  dbDisconnect(mynewdb)
+
+   selectInput('dt_table_name', 'DB Table Name', tbname)
+
+})
+
+
+output$generaltable <- renderTable({
+ dt_server_ip = input$dt_server_ip
+  dt_user_id = input$dt_user_id
+  dt_password = input$dt_password
+  dt_db_name = input$dt_db_name
+  dt_table_name = input$dt_table_name
+  db_command = paste("select * from ",dt_table_name, sep=" ")
+  mynewdb = dbConnect(MariaDB(), user=dt_user_id ,password=dt_password, dbname=dt_db_name,host=dt_server_ip)
+  dtdata = dbGetQuery(mynewdb, db_command )
+  dtdata = dtdata[,-1]
+  dbDisconnect(mynewdb)
+ 
+ head(dtdata, n = input$rownumberoftable)
+})
+
+ output$tablesummaryplot <- renderPlot({
+ 
+  dt_server_ip = input$dt_server_ip
+  dt_user_id = input$dt_user_id
+  dt_password = input$dt_password
+  dt_db_name = input$dt_db_name
+  dt_table_name = input$dt_table_name
+  db_command = paste("select * from ",dt_table_name, sep=" ")
+  mynewdb = dbConnect(MariaDB(), user=dt_user_id ,password=dt_password, dbname=dt_db_name,host=dt_server_ip)
+  dtdata = dbGetQuery(mynewdb, db_command )
+  dtdata = dtdata[,-1]
+  dbDisconnect(mynewdb)
+
+   ggpairs(data.frame(dtdata),main="Database Table Summary Plot",pch=21,bg=c("red","green","blue"))
+})
+
+###############################################################################################################
+
+
+############# Machine Learnings #######################################################################################################################
+#output$fuploadtable <- renderTable({
+# inFile <- input$file1
+# if (is.null(inFile))
+#        return (NULL)
+#
+# uploaddf = read.csv(inFile$datapath, header = input$header,sep = input$sep,quote = input$quote)
+# head(uploaddf, n = input$nrs)
+#})
+
+
+output$tablenameml = renderUI({
+
+  ml_server_ip = input$ml_server_ip
+  ml_user_id = input$ml_user_id
+  ml_password = input$ml_password
+  ml_db_name = input$ml_db_name
+  db_command = "show tables"
+  mynewdb = dbConnect(MariaDB(), user=ml_user_id ,password=ml_password, dbname=ml_db_name,host=ml_server_ip)
+  tbname = dbGetQuery(mynewdb, db_command )
+  dbDisconnect(mynewdb)
+
+   selectInput('ml_table_name', 'Database Table Name', tbname)
+ 
+})
+
+
+output$xlabels = renderUI({
+      
+  ml_server_ip = input$ml_server_ip
+  ml_user_id = input$ml_user_id
+  ml_password = input$ml_password
+  ml_db_name = input$ml_db_name
+  ml_table_name = input$ml_table_name
+
+#  ml_x_variable = input$ml_x_variable
+#  ml_y_variable = input$ml_y_variable
+  ml_kindofgraph = input$ml_kindofgraph
+  db_command = paste("select * from ",ml_table_name, sep=" ")
+#  x_title = paste (ml_x_variable, " Distribution", sep=" ")
+#  y_title = paste (ml_y_variable, " Distribution", sep=" ")
+  mynewdb = dbConnect(MariaDB(), user=ml_user_id ,password=ml_password, dbname=ml_db_name,host=ml_server_ip)
+  mldata = dbGetQuery(mynewdb, db_command )
+  mldata = mldata[,-1]
+  dbDisconnect(mynewdb)
+   
+
+    selectInput('newx', 'X-Predictor', names(mldata))
+    })
+
+output$ylabels = renderUI({
+ ml_server_ip = input$ml_server_ip
+  ml_user_id = input$ml_user_id
+  ml_password = input$ml_password
+  ml_db_name = input$ml_db_name
+  ml_table_name = input$ml_table_name
+ # ml_x_variable = input$ml_x_variable
+ # ml_y_variable = input$ml_y_variable
+  ml_kindofgraph = input$ml_kindofgraph
+  db_command = paste("select * from ",ml_table_name, sep=" ")
+ # x_title = paste (ml_x_variable, " Distribution", sep=" ")
+ # y_title = paste (ml_y_variable, " Distribution", sep=" ")
+  mynewdb = dbConnect(MariaDB(), user=ml_user_id ,password=ml_password, dbname=ml_db_name,host=ml_server_ip)
+  mldata = dbGetQuery(mynewdb, db_command )
+  mldata = mldata[,-1]
+  dbDisconnect(mynewdb)
+
+  selectInput('newy', 'Y-Target', names(mldata))
+    })
+
+output$numberofclusters = renderUI({
+ numericInput("noclusters", "The Number of Clusters:", 3)
+})
+
+columnInputx <- reactive({
+
+  ml_server_ip = input$ml_server_ip
+  ml_user_id = input$ml_user_id
+  ml_password = input$ml_password
+  ml_db_name = input$ml_db_name
+  ml_table_name = input$ml_table_name
+  #ml_x_variable = input$ml_x_variable
+  #ml_y_variable = input$ml_y_variable
+  ml_kindofgraph = input$ml_kindofgraph
+  db_command = paste("select * from ",ml_table_name, sep=" ")
+  #x_title = paste (ml_x_variable, " Distribution", sep=" ")
+  #y_title = paste (ml_y_variable, " Distribution", sep=" ")
+  mynewdb = dbConnect(MariaDB(), user=ml_user_id ,password=ml_password, dbname=ml_db_name,host=ml_server_ip)
+  mldata = dbGetQuery(mynewdb, db_command )
+  dbDisconnect(mynewdb)
+  mldatax <- mldata[,c(input$newx)]
+
+})
+
+columnInputy <- reactive({
+
+  ml_server_ip = input$ml_server_ip
+  ml_user_id = input$ml_user_id
+  ml_password = input$ml_password
+  ml_db_name = input$ml_db_name
+  ml_table_name = input$ml_table_name
+  #ml_x_variable = input$ml_x_variable
+  #ml_y_variable = input$ml_y_variable
+  ml_kindofgraph = input$ml_kindofgraph
+  db_command = paste("select * from ",ml_table_name, sep=" ")
+  #x_title = paste (ml_x_variable, " Distribution", sep=" ")
+  #y_title = paste (ml_y_variable, " Distribution", sep=" ")
+  mynewdb = dbConnect(MariaDB(), user=ml_user_id ,password=ml_password, dbname=ml_db_name,host=ml_server_ip)
+  mldata = dbGetQuery(mynewdb, db_command )
+  dbDisconnect(mynewdb)
+  mldatay <- mldata[,c(input$newy)]
+
+})
+
+
+
+output$mlgraph <- renderPlot({
+
+  ml_kindofgraph <- input$ml_kindofgraph
+  #ml_x_variable <- input$ml_x_variable
+  #ml_y_variable <- input$ml_y_variable
+  mldatax <- columnInputx()
+  mldatax <- data.matrix(mldatax)
+  mldatay <- columnInputy()
+  mldatay <- data.matrix(mldatay)
+  xlabel = input$newx
+  ylabel = input$newy
+   if (is.null(input$newx))
+	return (NULL)
+
+   if (ml_kindofgraph == "LinearRegression"){
+   linearRegressionLine <- lm(mldatay~mldatax)
+   plot(mldatax,mldatay,main="Linear Regression by Machine Learning",col="blue",xlab=xlabel,ylab=ylabel)
+   abline(linearRegressionLine,col="red")
+   #plot(mldatax,mldatay)
+   }
+   else if (ml_kindofgraph == "KMeansClustering"){
+   
+kMeansInput <- reactive({
+  data.frame(mldatax,mldatay)
+})
+
+clusters <- reactive({
+        kmeans(kMeansInput(),input$noclusters)
+})
+
+  plot(kMeansInput(), col = clusters()$cluster,main="K-Means Clustering by Machine Learning",pch=20,cex=3,xlab=xlabel,ylab=ylabel)
+  points(clusters()$centers, pch=4,cex=4,lwd=4)
+
+
+
+    }
+   else if (ml_kindofgraph=="LogisticRegression") {
+
+LogisticRegressionInput <- reactive({
+    data.frame(mldatax,mldatay)
+
+})
+    logistic <- glm(mldatay ~.,data=LogisticRegressionInput(),family='binomial')
+  #  curve(predict(logistic, data.frame(mldatax),type="resp"),add=TRUE)
+    plot(LogisticRegressionInput(),main="Logistic Regression by Machine Learning",xlab=xlabel,ylab=ylabel)
+
+  }
+
+  else{
+
+}
+})
+
+output$summaryofmachinelearnings <- renderPrint({
+         ml_kindofgraph <- input$ml_kindofgraph
+  ml_x_variable <- input$ml_x_variable
+  ml_y_variable <- input$ml_y_variable
+  mldatax <- columnInputx()
+  mldatax <- data.matrix(mldatax)
+  mldatay <- columnInputy()
+  mldatay <- data.matrix(mldatay)
+  dataframex <- data.frame(mldatax)
+   if (is.null(input$newx))
+        return (NULL)
+
+   if (ml_kindofgraph == "LinearRegression"){
+   linearRegressionLine <- lm(mldatay~mldatax)
+   summary(linearRegressionLine)
+#   predicted = predict(linearRegressionLine,data=dataframex)
+#   predicted
+#   plot(mldatax,mldatay,main="Linear Regression by Machine Learning",col="blue",xlab=ml_x_variable, ylab=ml_y_variable)
+#   abline(linearRegressionLine,col="red")
+   #plot(mldatax,mldatay)
+   }
+   else if (ml_kindofgraph == "KMeansClustering"){
+
+   kMeansInput <- reactive({
+  data.frame(mldatax,mldatay)
+})
+
+clusters <- reactive({
+        kmeans(kMeansInput(),input$noclusters)
+})
+summary(clusters())
+   }
+
+ else if (ml_kindofgraph=="LogisticRegression") {
+
+LogisticRegressionInput <- reactive({
+    data.frame(mldatax,mldatay)
+
+})
+    logistic <- vglm(mldatay ~.,data=LogisticRegressionInput(),family="binomial")
+    summary(logistic)
+
+  }
+
+   else {
+   }
+    
+})
+
+
+#######################################################################################################################################################
+  output$plot3 <- renderPlot({
+  regl <- lm(temphumlightdata$temperature~temphumlightdata$humidity)
+    plot(temphumlightdata$humidity,temphumlightdata$temperature,main="IoT Data Regression [Temperature]",xlab="Humidity", ylab="Temperature",col="red")
+    abline(regl,col="blue")
+ })
+output$plot4 <- renderPlot({
+  regl2 <- lm(temphumlightdata$humidity~temphumlightdata$temperature)
+    plot(temphumlightdata$temperature,temphumlightdata$humidity,main="IoT Data Regression [Humidity]",xlab="Temperature", ylab="Humidity",col="blue")
+    abline(regl2,col="red")
+ })
+
+
+  output$plot5 <- renderPlot({
+    hist(temphumlightdata$temperature,main="Distribution of Temperature", density=20,breaks=20,prob=TRUE,xlab="Temperature", ylab="Density")
+    lines(density(temphumlightdata$temperature),col ="blue")
+  })
+
+output$maximum_temp <- renderPrint({
+	max(temphumlightdata$temperature)
+})
+
+output$maximum_hum <- renderPrint({
+        max(temphumlightdata$humidity)
+})
+
+output$maximum_light <- renderPrint({
+        max(temphumlightdata$light)
+})
+
+output$minimum_temp <- renderPrint({
+	min(temphumlightdata$temperature)
+})
+
+
+output$minimum_hum <- renderPrint({
+        min(temphumlightdata$humidity)
+})
+
+output$minimum_light <- renderPrint({
+        min(temphumlightdata$light)
+})
+
+
+#################################################################################
+######################## Machine Learning Algorithms #############################
+#################################################################################
+
+######## Linear Regression Algorithm #############################################
+
+linearRegressionInput <- reactive({
+    temphumlightdata[,c(input$linearx,input$lineary)]
+})
+
+
+output$linearRegressionPlot <- renderPlot({
+  
+    XY <- linearRegressionInput()
+    XYN <- data.matrix(XY)
+
+    linearRegressionLine <- lm(XYN[,2]~XYN[,1])
+    plot(XY,main="Linear Regression by Machine Learning",col="blue")
+    abline(linearRegressionLine,col="red")
+ })
+
+#################################################################################
+
+######## LOESS Regression Algorithm #############################################
+
+LoessRegressionInput <- reactive({
+    temphumlightdata[,c(input$polyx,input$polyy)]
+})
+
+
+output$LoessRegressionPlot <- renderPlot({
+
+    XY <- LoessRegressionInput()
+    XYN <- data.matrix(XY)
+    X <- XYN[,1]
+    Y <- XYN[,2]
+    Data <- data.frame(X,Y)
+    plot(Y ~ X,Data,main="LOESS Regression by Machine Learning",col="blue")
+    loess_fit <- loess(Y ~ X,Data)
+    lines(Data$X,predict(loess_fit), col = "blue")
+
+    nls_fit <- nls(Y ~ a + b*X^(-c),Data,start = list(a = 80,b=20,c =0.2))
+    lines(Data$X, predict(nls_fit), col = "red")
+ })
+
+#################################################################################
+
+######## Linear SVM (Support Vector Machine) Algorithm #############################################
+
+linearSVMInput <- reactive({
+    temphumlightdata[,c(input$svmx,input$svmy)]
+})
+
+
+output$linearSVMPlot <- renderPlot({
+
+    XY <- linearSVMInput()
+    XYN <- as.data.frame(XY)
+    fit <- svm(XY[,2] ~ . , data = XY)
+    plot(fit,XY)
+    
+ })
+
+#################################################################################
+
+
+
+
+######## K-Means Clustering Algorithm#######################################################
+kMeansInput <- reactive({
+  temphumlightdata[,c(input$xcol,input$ycol)]
+})
+
+clusters <- reactive({
+        kmeans(kMeansInput(),input$clusters)
+})
+
+output$kMeansPlot <- renderPlot({
+  plot(kMeansInput(), col = clusters()$cluster,pch=20,cex=3)
+  points(clusters()$centers, pch=4,cex=4,lwd=4)
+})
+####################################################################################
+
+###### MySQL Custom Graph ###############################################################
+output$mysqlregression <- renderPlot({
+  server_ip = input$server_ip
+  user_id = input$user_id
+  password = input$password
+  db_name = input$db_name
+  table_name = input$table_name
+  x_variable = input$x_variable
+  y_variable = input$y_variable
+  kindofgraph = input$kindofgraph
+  db_command = paste("select * from ",table_name, sep=" ")
+  x_title = paste (x_variable, " Distribution", sep=" ")
+  y_title = paste (y_variable, " Distribution", sep=" ")
+  mynewdb = dbConnect(MariaDB(), user=user_id ,password=password, dbname=db_name,host=server_ip)
+  thldata = dbGetQuery(mynewdb, db_command )
+  dbDisconnect(mynewdb)
+
+   xxx <- thldata[x_variable]
+   yyy <- thldata[y_variable]
+   xdata <- as.numeric(unlist(xxx))
+   ydata <- as.numeric(unlist(yyy))
+   
+   if (kindofgraph == "regression"){
+   linearRegressionLine <- lm(ydata~xdata)
+   plot(xdata,ydata,main="Linear Regression by Machine Learning",col="blue",xlab=x_variable, ylab=y_variable)
+   abline(linearRegressionLine,col="red")
+   }
+   else if (kindofgraph == "histogram"){
+   par(mfrow = c(1, 2))
+   hist(xdata,main=x_title, density=20,breaks=20,prob=TRUE,col="yellow",xlab=x_variable, ylab="Density")
+   lines(density(xdata),col ="green")
+   hist(ydata,main=y_title, density=20,breaks=20,prob=TRUE,col="purple", xlab=y_variable, ylab="Density")
+   lines(density(ydata),col ="blue")
+
+    }
+   else {
+   }
+
+})
+
+
+
+
+
+########################################################################################
+
+}
+
+shinyApp(ui, server)
+
