@@ -20,3 +20,4 @@ Append-only. 각 항목은 일관된 prefix로 시작합니다 → `grep "^## \[
 ---
 
 ## [2026-05-30] init | mywiki 위키 초기 구조 생성 (raw/, wiki/, CLAUDE.md, index, log, overview)
+## [2026-05-30] ingest | LLM Wiki (a pattern for LLM-built knowledge bases) — 소스 1개. 생성: sources/llm-wiki-pattern, concepts(llm-wiki, retrieval-augmented-generation, three-layer-architecture, ingest-query-lint, index-and-log, memex), entities(vannevar-bush, obsidian, qmd, swarmvault). overview·index 갱신. 11개 페이지 생성/갱신.
